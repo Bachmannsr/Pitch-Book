@@ -1,0 +1,931 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pitchbook – Football Database</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;800&family=Barlow:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root { --chalk:#f2f4ef; --turf:#1f5c3a; --light:#f5d547; --ink:#14211a; --line:#cbd5cc; --muted:#5b6a60; }
+  * { box-sizing:border-box; margin:0; }
+  body { font-family:'Barlow',system-ui,sans-serif; background:var(--chalk); color:var(--ink); min-height:100vh; }
+  a { color:inherit; }
+  a:focus-visible, button:focus-visible, input:focus-visible { outline:3px solid var(--light); outline-offset:2px; }
+  .topbar { display:flex; justify-content:space-between; align-items:center; padding:18px 28px; }
+  .logo { font-family:'Barlow Condensed',sans-serif; font-weight:800; font-size:1.6rem; color:var(--turf); text-decoration:none; }
+  .login { font-weight:500; text-decoration:none; border:2px solid var(--ink); border-radius:999px; padding:8px 20px; }
+  .login:hover { background:var(--ink); color:var(--chalk); }
+  .subnav { display:flex; gap:8px; padding:0 28px 8px; overflow-x:auto; }
+  .subnav a { text-decoration:none; font-weight:500; padding:6px 16px; border-radius:999px; border:2px solid transparent; white-space:nowrap; }
+  .subnav a:hover { background:var(--light); }
+  .subnav a.on { border-color:var(--ink); }
+  main { max-width:860px; margin:0 auto; padding:8px 20px 60px; }
+  main.wide { max-width:none; padding:0 0 60px; }
+  h1.page { font-family:'Barlow Condensed',sans-serif; font-weight:800; font-size:clamp(2.4rem,7vw,3.6rem); line-height:1; }
+  h2 { font-family:'Barlow Condensed',sans-serif; font-weight:800; font-size:1.7rem; margin:36px 0 14px; }
+  .sub { margin-top:8px; color:var(--muted); }
+
+  /* home */
+  .hero { position:relative; overflow:hidden; background:var(--turf); color:var(--chalk); margin:0 28px; border-radius:20px; padding:72px 24px 80px; text-align:center; }
+  .hero::before, .hero::after { content:""; position:absolute; pointer-events:none; }
+  .hero::before { left:50%; top:0; bottom:0; width:2px; background:rgba(242,244,239,.18); }
+  .hero::after { left:50%; top:50%; width:460px; height:460px; transform:translate(-50%,-50%); border:2px solid rgba(242,244,239,.18); border-radius:50%; }
+  .hero > * { position:relative; z-index:1; }
+  .hero h1 { font-family:'Barlow Condensed',sans-serif; font-weight:800; font-size:clamp(2.6rem,8vw,5rem); line-height:1; }
+  .hero .sub { color:inherit; opacity:.85; font-size:1.1rem; margin-top:12px; }
+  .search { position:relative; max-width:620px; margin:32px auto 0; text-align:left; }
+  .search input, .filter { width:100%; font:inherit; font-size:1.1rem; padding:16px 20px; border:3px solid transparent; border-radius:14px; background:var(--chalk); color:var(--ink); }
+  .filter { border-color:var(--ink); margin:20px 0 8px; }
+  .search input:focus { border-color:var(--light); outline:none; }
+  .results { position:absolute; left:0; right:0; top:calc(100% + 6px); background:var(--chalk); color:var(--ink); border-radius:14px; overflow:hidden; list-style:none; padding:0; box-shadow:0 12px 30px rgba(0,0,0,.25); display:none; z-index:5; }
+  .results.open { display:block; }
+  .results a { display:flex; justify-content:space-between; gap:12px; padding:12px 22px; text-decoration:none; }
+  .results a:hover, .results a:focus { background:var(--light); outline:none; }
+  .results small, .results .empty { color:var(--muted); }
+  .results .empty { padding:14px 22px; }
+  .menu { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:16px; max-width:960px; margin:40px auto; padding:0 28px; }
+  .menu a { display:flex; flex-direction:column; justify-content:space-between; min-height:130px; padding:18px 20px; border:2px solid var(--ink); border-radius:14px; text-decoration:none; font-family:'Barlow Condensed',sans-serif; font-weight:800; font-size:2rem; }
+  .menu a span { font-family:'Barlow',sans-serif; font-weight:400; font-size:.95rem; color:#4a5a50; }
+  .menu a:hover, .menu a:focus-visible { background:var(--light); }
+  .menu a.primary { background:var(--ink); color:var(--chalk); }
+  .menu a.primary span { color:#b9c6bd; }
+  .menu a.primary:hover { background:var(--light); color:var(--ink); }
+  .menu a.primary:hover span { color:var(--ink); }
+
+  /* lists (trending + players) */
+  .tabs { display:flex; gap:8px; margin:24px 0 16px; }
+  .tabs button { font:inherit; font-weight:500; cursor:pointer; padding:8px 18px; border:2px solid var(--ink); border-radius:999px; background:transparent; color:var(--ink); }
+  .tabs button[aria-pressed="true"] { background:var(--ink); color:var(--chalk); }
+  .tabs button:hover:not([aria-pressed="true"]) { background:var(--light); }
+  ol, ul.rows { list-style:none; padding:0; }
+  .rows a { display:grid; grid-template-columns:48px 1fr auto; align-items:center; gap:14px; padding:14px 8px; border-bottom:1px solid var(--line); text-decoration:none; }
+  .rows a:hover, .rows a:focus-visible { background:var(--light); outline:none; }
+  .rk { font-family:'Barlow Condensed',sans-serif; font-weight:800; font-size:2rem; text-align:center; color:var(--turf); }
+  .nm { font-weight:500; font-size:1.1rem; }
+  .meta { color:var(--muted); font-size:.92rem; }
+  .bar { display:block; height:6px; margin-top:8px; background:var(--line); border-radius:3px; overflow:hidden; }
+  .bar i { display:block; height:100%; background:var(--turf); }
+  .views { text-align:right; font-weight:500; }
+  .views small { display:block; color:var(--muted); font-weight:400; }
+  .empty-msg { padding:24px 8px; color:var(--muted); }
+
+  /* profile */
+  .head { display:flex; justify-content:space-between; align-items:center; gap:20px; background:var(--turf); color:var(--chalk); border-radius:20px; padding:32px; }
+  .head h1 { font-family:'Barlow Condensed',sans-serif; font-weight:800; font-size:clamp(2.4rem,7vw,4rem); line-height:1; }
+  .head p { margin-top:8px; font-size:1.1rem; opacity:.9; }
+  .rating { text-align:center; flex-shrink:0; }
+  .rating b { display:block; font-family:'Barlow Condensed',sans-serif; font-weight:800; font-size:clamp(4.5rem,16vw,8rem); line-height:.9; color:var(--light); }
+  .rating span { font-size:.95rem; opacity:.85; }
+  .facts { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-top:16px; }
+  .fact { border:2px solid var(--ink); border-radius:14px; padding:14px 16px; }
+  .fact b { display:block; font-family:'Barlow Condensed',sans-serif; font-weight:800; font-size:1.9rem; line-height:1.1; }
+  .fact span { color:var(--muted); font-size:.92rem; }
+  .ranks { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
+  .rank { background:var(--ink); color:var(--chalk); border-radius:14px; padding:18px; }
+  .rank b { display:block; font-family:'Barlow Condensed',sans-serif; font-weight:800; font-size:2.6rem; line-height:1; color:var(--light); }
+  .ability { display:grid; grid-template-columns:minmax(240px,340px) 1fr; gap:28px; align-items:center; }
+  .ability svg { width:100%; height:auto; }
+  .stat { display:grid; grid-template-columns:100px 1fr 36px; align-items:center; gap:12px; padding:7px 0; }
+  .stat .bar { height:10px; margin:0; border-radius:5px; }
+  .stat b { text-align:right; }
+  .back { display:inline-block; margin:4px 0 16px; color:var(--muted); }
+  .note { color:var(--muted); margin-top:28px; font-size:.9rem; }
+
+  .head p a { text-decoration:underline; text-underline-offset:3px; }
+  .cgrid { display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:14px; margin-top:24px; }
+  .ccard { display:flex; align-items:center; gap:16px; padding:16px; border:2px solid var(--ink); border-radius:14px; text-decoration:none; }
+  .ccard:hover, .ccard:focus-visible { background:var(--light); outline:none; }
+  .ccard b { display:block; font-family:'Barlow Condensed',sans-serif; font-weight:800; font-size:1.4rem; }
+  .chead { display:flex; align-items:center; gap:22px; }
+  .chead h1 { font-family:'Barlow Condensed',sans-serif; font-weight:800; font-size:clamp(2.2rem,7vw,3.6rem); line-height:1; }
+  .chead p { margin-top:6px; color:var(--muted); font-size:1.1rem; }
+  .badge { display:inline-block; margin-top:10px; background:var(--light); border-radius:999px; padding:4px 14px; font-weight:500; font-size:.95rem; }
+  .cbox { margin-top:24px; border:2px solid var(--ink); border-radius:20px; padding:24px; }
+  .cbox h2 { margin-top:28px; }
+  .ratings { display:flex; align-items:center; gap:28px; flex-wrap:wrap; }
+  .ovr b { display:block; font-family:'Barlow Condensed',sans-serif; font-weight:800; font-size:6rem; line-height:.9; color:var(--turf); }
+  .ovr span { color:var(--muted); }
+  .lines { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; flex:1; min-width:240px; }
+  .line { background:var(--ink); color:var(--chalk); border-radius:12px; padding:12px; text-align:center; }
+  .line b { display:block; font-family:'Barlow Condensed',sans-serif; font-weight:800; font-size:2rem; line-height:1; color:var(--light); }
+  .pitch { position:relative; background:var(--turf); border-radius:16px; aspect-ratio:4/5; max-width:480px; margin:16px auto; overflow:hidden; }
+  .pitch::before { content:""; position:absolute; left:0; right:0; top:50%; height:2px; background:rgba(242,244,239,.2); }
+  .pitch::after { content:""; position:absolute; left:50%; top:50%; width:90px; height:90px; transform:translate(-50%,-50%); border:2px solid rgba(242,244,239,.2); border-radius:50%; }
+  .dot { position:absolute; z-index:1; transform:translate(-50%,-50%); display:flex; flex-direction:column; align-items:center; text-decoration:none; color:var(--chalk); }
+  .dot b { width:38px; height:38px; border-radius:50%; background:var(--light); color:var(--ink); display:flex; align-items:center; justify-content:center; font-family:'Barlow Condensed',sans-serif; font-weight:800; font-size:1.2rem; }
+  .dot span { margin-top:3px; font-size:.75rem; font-weight:500; text-shadow:0 1px 3px rgba(0,0,0,.6); white-space:nowrap; }
+  .dot:hover b, .dot:focus-visible b { background:var(--chalk); outline:none; }
+  .sqh, .sq a { display:grid; grid-template-columns:52px 1fr 40px 48px; align-items:center; gap:12px; padding:10px 8px; }
+  .sqh { color:var(--muted); font-size:.85rem; border-bottom:2px solid var(--ink); margin-top:8px; }
+  .sqh span:nth-child(n+3), .sq a > .meta { text-align:right; }
+  .sq { list-style:none; padding:0; }
+  .sq a { border-bottom:1px solid var(--line); text-decoration:none; }
+  .sq a:hover, .sq a:focus-visible { background:var(--light); outline:none; }
+  .sq .pos { font-family:'Barlow Condensed',sans-serif; font-weight:800; font-size:1.1rem; color:var(--turf); }
+  .sq b { text-align:right; font-family:'Barlow Condensed',sans-serif; font-size:1.4rem; }
+  @media (max-width:640px) { .chead { gap:14px; } .cbox { padding:16px; } .ovr b { font-size:5rem; } }
+
+  .flag { font-size:4rem; line-height:1; flex-shrink:0; }
+  .ccard .flag { font-size:2.6rem; }
+  .btn { display:inline-block; font:inherit; font-weight:500; cursor:pointer; text-decoration:none; background:var(--ink); color:var(--chalk); border:2px solid var(--ink); border-radius:999px; padding:10px 22px; }
+  .btn:hover { background:var(--light); color:var(--ink); }
+  .btn.ghost { background:transparent; color:var(--ink); }
+  .toprow { display:flex; justify-content:space-between; align-items:center; gap:12px; }
+  .authform { display:grid; gap:14px; margin-top:16px; max-width:420px; }
+  .eform { display:grid; grid-template-columns:repeat(2,1fr); gap:14px; margin-top:20px; }
+  .eform h2 { margin:14px 0 0; }
+  .fld { display:flex; flex-direction:column; gap:6px; font-weight:500; }
+  .fld input, .fld select { font:inherit; padding:12px 14px; border:2px solid var(--ink); border-radius:12px; background:var(--chalk); color:var(--ink); }
+  .fld input[type=color] { padding:4px; height:48px; }
+  .wide { grid-column:1 / -1; }
+  .err { color:#a3261c; min-height:1.3em; font-weight:500; }
+  .acts { display:flex; gap:10px; flex-wrap:wrap; }
+  .colr { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+  .colr input[type=color] { width:56px; }
+  .sw { display:flex; gap:6px; flex-wrap:wrap; }
+  .swb { width:28px; height:28px; border-radius:50%; border:2px solid var(--ink); cursor:pointer; padding:0; }
+  .prev { display:flex; justify-content:center; padding:16px; border:2px dashed var(--line); border-radius:14px; }
+  a.rank { display:block; text-decoration:none; }
+  a.rank:hover, a.rank:focus-visible { background:var(--turf); outline:none; }
+  .rank small { display:block; margin-top:8px; opacity:.7; font-size:.85rem; }
+  .rows li.me a { background:var(--light); }
+  .tabs { flex-wrap:wrap; }
+  .tabs a { font:inherit; font-weight:500; text-decoration:none; padding:8px 18px; border:2px solid var(--ink); border-radius:999px; color:var(--ink); }
+  .tabs a[aria-current="page"] { background:var(--ink); color:var(--chalk); }
+  .tabs a:hover:not([aria-current="page"]) { background:var(--light); }
+  .lgh, .lg a { display:grid; grid-template-columns:1fr 64px 72px; align-items:center; gap:12px; padding:14px 8px; }
+  .lgh { color:var(--muted); font-size:.85rem; border-bottom:2px solid var(--ink); margin-top:20px; }
+  .lgh span:nth-child(n+2), .lg b { text-align:right; }
+  .lg { list-style:none; padding:0; }
+  .lg a { border-bottom:1px solid var(--line); text-decoration:none; }
+  .lg a:hover, .lg a:focus-visible { background:var(--light); outline:none; }
+  .lg b { font-family:'Barlow Condensed',sans-serif; font-size:1.6rem; }
+  .chead p a { text-decoration:underline; text-underline-offset:3px; }
+  @media (max-width:640px) {
+    .topbar { padding:14px 16px; } .subnav { padding:0 16px 8px; }
+    .hero { margin:0 12px; padding:48px 16px 56px; } .hero::after { width:300px; height:300px; }
+    .head { padding:24px 20px; } .facts { grid-template-columns:repeat(2,1fr); }
+    .ranks, .ability { grid-template-columns:1fr; }
+    .rows a { grid-template-columns:36px 1fr auto; gap:10px; }
+  }
+</style>
+</head>
+<body>
+<header class="topbar">
+  <a class="logo" href="#/">Pitchbook</a>
+  <a class="login" id="auth" href="#/login">Log in</a>
+</header>
+<nav class="subnav" id="subnav" aria-label="Browse"></nav>
+<main id="app"></main>
+
+<script>
+  // SAMPLE DATA – replace with calls to your own database/API.
+  const STATS = ['Pace','Shooting','Passing','Dribbling','Defending','Physical'];
+  const GK_STATS = ['Diving','Handling','Kicking','Reflexes','Speed','Positioning'];
+  const players = [];
+
+  const clubs = [];
+  const PLURAL = { GK:'goalkeepers', LB:'left backs', LWB:'left wing backs', CB:'centre backs', RB:'right backs', RWB:'right wing backs', CDM:'defensive midfielders', CM:'central midfielders', CAM:'attacking midfielders', LM:'left midfielders', RM:'right midfielders', LW:'left wingers', RW:'right wingers', CF:'centre forwards', ST:'strikers' };
+  const CODE = Object.fromEntries(Object.entries(PLURAL).map(([k, v]) => [v, k]));
+  players.forEach(p => p.code = CODE[p.pos]);
+  // Typical stats per position (same order as the stat sets) and how much each stat counts towards the overall rating.
+  const BASE = { GK:[70,70,66,72,52,72], LB:[78,50,68,68,72,70], RB:[78,50,68,68,72,70], CB:[58,40,56,52,78,80], CM:[68,66,78,74,64,70], LW:[82,70,70,80,35,64], RW:[82,70,70,80,35,64], ST:[78,82,62,74,35,76],
+    CDM:[62,50,74,64,80,78], CAM:[72,76,82,84,50,58], LM:[82,68,76,80,50,64], RM:[82,68,76,80,50,64], LWB:[82,52,72,72,74,72], RWB:[82,52,72,72,74,72], CF:[76,80,76,80,40,72] };
+  const WEIGHT = { GK:[4,4,1,4,0,3], LB:[3,0,2,2,4,2], RB:[3,0,2,2,4,2], CB:[1,0,1,0,5,4], CM:[1,2,4,3,2,2], LW:[3,2,2,4,0,1], RW:[3,2,2,4,0,1], ST:[2,4,1,2,0,2],
+    CDM:[1,0,3,1,5,4], CAM:[2,3,4,4,0,1], LM:[3,2,3,4,1,1], RM:[3,2,3,4,1,1], LWB:[4,0,3,2,3,2], RWB:[4,0,3,2,3,2], CF:[2,4,3,3,0,2] };
+  // 4-3-3: position code, then x% and y% on the pitch graphic
+  const SLOTS = [['GK',50,90],['RB',86,68],['CB',62,73],['CB',38,73],['LB',14,68],['CM',70,48],['CM',50,54],['CM',30,48],['RW',84,22],['ST',50,14],['LW',16,22]];
+  const avg = a => Math.round(a.reduce((s, p) => s + p.rating, 0) / a.length);
+
+  // Nations are built from the existing players only (no extra players are generated).
+  const FLAGS = { England:'ENG', Spain:'ES', France:'FR', Brazil:'BR', Germany:'DE', Portugal:'PT', Japan:'JP', Mexico:'MX', Argentina:'AR', Italy:'IT', Netherlands:'NL', Belgium:'BE', Croatia:'HR', Nigeria:'NG', USA:'US', Senegal:'SN', Morocco:'MA', 'South Korea':'KR', Colombia:'CO', Uruguay:'UY', Ghana:'GH', Denmark:'DK', Sweden:'SE', Norway:'NO', Poland:'PL', Turkey:'TR', Switzerland:'CH', Canada:'CA', Australia:'AU', Egypt:'EG', Ireland:'IE', Scotland:'SCO', Jamaica:'JM', Nepal:'NP', Mali:'ML', Somalia:'SO', Cameroon:'CM', China:'CN', Tunisia:'TN' };
+  const TAGS = { ENG:'gbeng', SCO:'gbsct', WAL:'gbwls' };
+  const flagOf = k => TAGS[k] ? String.fromCodePoint(0x1F3F4, ...[...TAGS[k]].map(ch => 0xE0000 + ch.charCodeAt(0)), 0xE007F)
+                              : String.fromCodePoint(...[...k].map(ch => 127397 + ch.charCodeAt(0)));
+  const GROUP = { GK:'g', LB:'d', LWB:'d', CB:'d', RB:'d', RWB:'d', CDM:'m', CM:'m', CAM:'m', LM:'m', RM:'m', LW:'a', RW:'a', CF:'a', ST:'a' };
+  let nations = [];
+  const pickXI = (squad, slots = SLOTS) => {
+    const used = new Set(), xi = slots.map(() => null);
+    // First fill each slot with the best player in that exact position, then with the best left in the same area of the pitch
+    [(q, s) => q.code === s[0], (q, s) => GROUP[q.code] === GROUP[s[0]]].forEach(match => slots.forEach((s, i) => {
+      if (xi[i]) return;
+      const p = squad.filter(q => !used.has(q.id) && match(q, s)).sort((a, b) => b.rating - a.rating)[0];
+      if (p) { xi[i] = p; used.add(p.id); }
+    }));
+    return xi;
+  };
+  const teamStats = (t, xi) => {
+    const got = xi.filter(Boolean), line = codes => { const g = got.filter(p => codes.includes(p.code)); return g.length ? avg(g) : null; };
+    Object.assign(t, { xi, n: got.length, ovr: got.length ? avg(got) : null, att: line(['RW','ST','LW','CF']), mid: line(['CDM','CM','CAM','LM','RM']), def: line(['GK','RB','CB','LB','LWB','RWB']) });
+  };
+  // Works out every club's and nation's squad and ratings from the players. Runs at start-up and after any admin edit.
+  function rebuild() {
+    players.forEach(p => { const c = clubs.find(x => x.name === p.club); p.league = c ? c.league : ''; });
+    clubs.forEach(c => { c.squad = players.filter(p => p.club === c.name); teamStats(c, pickXI(c.squad, FORMS[c.formation] || SLOTS)); if (c.rating) c.ovr = c.rating; });
+    nations = [...new Set(players.map(p => p.nation))].map(name => {
+      const n = { id: name.toLowerCase(), name, flag: FLAGS[name] ? flagOf(FLAGS[name]) : '\u{1F3F3}\u{FE0F}', squad: players.filter(p => p.nation === name) };
+      teamStats(n, pickXI(n.squad)); return n;
+    });
+  }
+
+  // Clubs added after the prototype ones. They start with no players: squads arrive with the team sheets.
+  // Until a club has 11 players, its overall rating is the figure set here.
+  const LEAGUE = { England:'English Premier Division', Germany:'German Premier Division', Italy:'Italian Premier Division', France:'French Premier Division', Spain:'Spanish Premier Division', Brazil:'Brazilian Premier Division', Portugal:'Portuguese Premier Division', USA:'American Premier Division' };
+  // [country, name, crest letters, overall, shape, background, pattern, pattern colour, border, emblem, emblem colour, stars]
+  [
+    ['England','London City Gunners','LCG',85,'shield','#c8102e','none','#c8102e','#ffffff','text','#ffffff',0],
+    ['England','Chelski','CHE',81,'round','#1a3fa0','hoops','#2a56c6','#ffffff','text','#ffffff',0],
+    ['England','Liverpool City','LCI',83,'rounded','#c8102e','chevron','#9b0d24','#f5d547','text','#f5d547',0],
+    ['England','City of Manchester FC','CMC',84,'hexagon','#6cabdd','none','#6cabdd','#ffffff','star','#ffffff',0],
+    ['Germany','Bavaria Munich','BAV',86,'round','#dc052d','stripes','#c00428','#0066b2','text','#ffffff',5],
+    ['Germany','Berserk Dortmund','BER',82,'round','#fde100','none','#fde100','#000000','text','#000000',0],
+    ['Italy','Piedmont','PIE',79,'shield','#ffffff','stripes','#000000','#000000','star','#f5d547',2],
+    ['Italy','Inter Malicia','IM',81,'rounded','#0b3c8a','stripes','#000000','#ffffff','text','#ffffff',2],
+    ['Italy','AC Malicia','ACM',77,'rounded','#c8102e','stripes','#000000','#ffffff','text','#ffffff',0],
+    ['Italy','Rome FC','ROM',78,'shield','#8c1d40','none','#8c1d40','#f5b700','text','#f5b700',0],
+    ['Italy','Florenza','FLO',75,'hexagon','#6a3fa0','none','#6a3fa0','#ffffff','text','#ffffff',0],
+    ['France','Paris Elite','PAR',87,'shield','#0a1f44','diagonal','#c8102e','#ffffff','star','#ffffff',3],
+    ['France','Olympique Marseille','OM',76,'round','#ffffff','none','#ffffff','#00a3e0','text','#00a3e0',1],
+    ['France','FC Monaco','MON',77,'diamond','#e30613','halves','#ffffff','#e30613','crown','#000000',0],
+    ['France','Sporting Alsace','SA',74,'banner','#0057b8','chevron','#ffffff','#0057b8','ball','#ffffff',0],
+    ['Spain','Royal Madrid','RM',87,'shield','#ffffff','none','#ffffff','#d4a017','crown','#d4a017',5],
+    ['Spain','CF Barkalona','CFB',88,'shield','#a50044','stripes','#004d98','#f5d547','text','#f5d547',0],
+    ['Spain','Atletic Bilbaloa','AB',79,'shield','#c8102e','stripes','#ffffff','#000000','text','#000000',0],
+    ['Brazil','Malvadao','MAL',76,'round','#000000','hoops','#ffffff','#000000','star','#f5d547',0],
+    ['Brazil','FC Furacão','FCF',75,'hexagon','#c8102e','diagonal','#000000','#000000','bolt','#ffffff',0],
+    ['Portugal','FC Portimo','FCP',75,'shield','#003a8c','halves','#ffffff','#003a8c','ball','#c8a24a',0],
+    ['Portugal','Sporting Lisboa','SL',77,'shield','#007a3d','hoops','#ffffff','#007a3d','star','#f5d547',0],
+    ['Portugal','Bragu','BRA',74,'rounded','#c8102e','none','#c8102e','#ffffff','text','#ffffff',0],
+    ['USA','SC Detroit','SCD',73,'shield','#1d3a6b','none','#1d3a6b','#c8102e','text','#ffffff',0],
+    ['USA','New York City Liberty','NYL',71,'round','#6cace4','none','#6cace4','#f26722','star','#ffffff',0],
+    ['USA','Salt Lake City FC','SLC',69,'hexagon','#b4162c','chevron','#1d3a6b','#f5d547','text','#f5d547',0],
+    ['USA','San Antonio Colts','SAC',68,'banner','#000000','none','#000000','#c8a24a','star','#c8a24a',0]
+  ].forEach(([country, name, text, rating, shape, base, pattern, patColor, trim, emblem, emblemColor, stars], i) =>
+    clubs.push({ id: 101 + i, name, country, founded: null, comp: '', league: LEAGUE[country], rating, crest: { shape, base, pattern, patColor, trim, emblem, emblemColor, text, stars } }));
+
+  // ---- Team sheets: players for clubs, with formations. Stats are worked out from each player's position and rating. ----
+  const FORMS = {
+    '4-3-3':   SLOTS,
+    '4-1-2-3': [['GK',50,90],['RB',86,68],['CB',62,73],['CB',38,73],['LB',14,68],['CDM',50,60],['CM',68,46],['CM',32,46],['RW',84,22],['ST',50,14],['LW',16,22]],
+    '4-3-3 staggered': [['GK',50,90],['RB',86,68],['CB',62,73],['CB',38,73],['LB',14,68],['CDM',50,62],['CM',30,50],['CAM',68,42],['RW',84,22],['ST',50,14],['LW',16,22]],
+    '4-2-4':   [['GK',50,90],['RB',86,68],['CB',62,73],['CB',38,73],['LB',14,68],['CM',62,54],['CM',38,54],['RW',86,30],['ST',62,14],['ST',38,14],['LW',14,30]],
+    '4-4-2':   [['GK',50,90],['RB',86,68],['CB',62,73],['CB',38,73],['LB',14,68],['RM',84,46],['CM',62,52],['CM',38,52],['LM',16,46],['ST',62,16],['ST',38,16]],
+    '4-4-1-1': [['GK',50,90],['RB',86,68],['CB',62,73],['CB',38,73],['LB',14,68],['RM',84,48],['CM',62,54],['CM',38,54],['LM',16,48],['CF',50,30],['ST',50,13]],
+    '4-2-3-1': [['GK',50,90],['RB',86,68],['CB',62,73],['CB',38,73],['LB',14,68],['CDM',64,62],['CDM',36,62],['RM',84,36],['CAM',50,38],['LM',16,36],['ST',50,13]],
+    '4-5-1':   [['GK',50,90],['RB',86,68],['CB',62,73],['CB',38,73],['LB',14,68],['CDM',64,62],['CDM',36,62],['CM',80,40],['CM',50,36],['CM',20,40],['ST',50,14]],
+    '3-5-2':   [['GK',50,90],['CB',74,72],['CB',50,76],['CB',26,72],['RWB',90,50],['LWB',10,50],['CDM',50,58],['CM',68,42],['CM',32,42],['ST',62,16],['ST',38,16]],
+    '3-4-3':   [['GK',50,90],['CB',74,72],['CB',50,76],['CB',26,72],['RWB',90,52],['CM',62,50],['CM',38,50],['LWB',10,52],['RW',82,22],['ST',50,14],['LW',18,22]]
+  };
+  // Sheet positions that list two roles use the one that fits the formation
+  const POSMAP = { 'LW/LM':'LW', 'RW/RM':'RW', 'ST/CF':'ST' };
+  const hrand = (s, i) => { let h = 2166136261 ^ i; for (const ch of s) h = Math.imul(h ^ ch.charCodeAt(0), 16777619); h ^= h >>> 15; h = Math.imul(h, 2246822507); h ^= h >>> 13; return (h >>> 0) / 4294967296; };
+  const statsFor = (code, rating, name, fixed = {}) => {
+    const w = WEIGHT[code], tw = w.reduce((a, b) => a + b);
+    let vals = BASE[code].map((v, i) => i in fixed ? fixed[i] : v + hrand(name, i) * 16 - 8);
+    for (let k = 0; k < 4; k++) { const cur = vals.reduce((s, v, i) => s + v * w[i], 0) / tw; vals = vals.map((v, i) => i in fixed ? v : Math.max(25, Math.min(99, v + rating - cur))); }
+    return Object.fromEntries((code === 'GK' ? GK_STATS : STATS).map((k, i) => [k, Math.round(vals[i])]));
+  };
+  // [position, name, nation, age, rating, height cm, weight kg, squad number]
+  const SHEETS = [
+    ['Liverpool City', '4-1-2-3', [
+      ['GK','Jinzo Ueda','Japan',27,85,188,82,1], ['LB','Lando Rose','England',24,82,178,73,66], ['CB','Levi Ackwell','Jamaica',26,85,191,87,4],
+      ['CB','Jean Capucine','France',23,84,185,79,3], ['RB','Laiken Rose','England',22,82,176,70,99], ['CDM','Brian Thornton','Scotland',28,83,183,80,14],
+      ['LW/LM','Ben Devlin','Scotland',21,84,175,68,11], ['CM','Daraki Dahal','Nepal',20,87,180,72,5], ['CM','Oliver Ramsey','England',25,81,181,76,9],
+      ['RW/RM','Federico Teixeira','Portugal',24,86,177,71,45], ['ST','Didinho','Brazil',26,89,186,84,7]]],
+    ['Paris Elite', '4-4-2', [
+      ['GK','Beau Benoit','France',28,85,190,84,1], ['LB','Lucas Esteban','Spain',25,82,179,73,2], ['CB','Jean-Pierre Absail','Portugal',27,86,188,85,3],
+      ['CB','Marcel Laurent','France',29,84,191,89,4], ['RB','Nani Tavares','Portugal',24,82,177,71,10], ['LM','Rei Ashoka','Japan',22,86,174,67,11],
+      ['CM','Matheus Da Silva','Brazil',26,85,181,76,90], ['CM','Etienne Cousin','Mali',25,87,180,74,8], ['RM','Raffy Sala','Egypt',29,89,176,69,9],
+      ['ST/CF','Ze Rato','Portugal',36,91,183,81,7], ['ST','Julien Mol','France',21,89,187,83,18]]],
+    ['Royal Madrid', '4-4-1-1', [
+      ['GK','Max Flugël','Germany',29,89,191,86,1], ['LB','Raphael Messier','France',25,83,180,74,3], ['CB','Julio Gomez','Spain',27,85,190,86,4],
+      ['CB','Don Carlo','Italy',30,90,193,91,5], ['RB','Travis Alexander','England',24,86,181,75,2], ['LM','Çetin Urdal','Turkey',23,82,177,70,11],
+      ['CM','Daniel Rodriguez','Colombia',26,84,182,77,8], ['CM','Lukè Petrovic','Croatia',28,87,179,73,6], ['RM','Roginho','Brazil',25,87,178,72,7],
+      ['CF','Leon Monèt','France',23,91,186,82,10], ['ST','Miguel Marquez','Mexico',27,92,185,80,9]]],
+    ['Piedmont', '4-5-1', [
+      ['GK','Dino Buffini','Italy',30,80,188,84,1], ['LB','Amadou Abdi','Somalia',24,77,178,72,3], ['CB','Giorgio Bellini','Italy',27,80,190,86,4],
+      ['CB','Leonardo Ferraro','Italy',25,79,187,82,5], ['RB','Mohamed El-Sayed','Egypt',23,78,181,75,2], ['CDM','Gabriel Noir','France',28,80,184,80,6],
+      ['CDM','Lukas Haas','Denmark',26,79,182,77,14], ['CM','Carlos Soares','Portugal',24,78,180,74,8], ['CM','Marco Pizzaballa','Italy',35,86,179,73,18],
+      ['CM','Matteo Peron','Italy',22,76,176,69,10], ['ST','Ezequiel Romero','Argentina',26,81,185,81,9]]]
+  ];
+  const SHEETS_V = 2;
+  let sheetId = 1001;
+  SHEETS.forEach(([club, formation, rows]) => {
+    clubs.find(c => c.name === club).formation = formation;
+    rows.forEach(([pos, name, nation, age, rating, height, weight, number]) => {
+      const code = POSMAP[pos] || pos, day = (rating - 60) * 20;
+      players.push({ id: sheetId++, name, club, nation, pos: PLURAL[code], code, rating, age, height, weight, number,
+                     stats: statsFor(code, rating, name), views: { day, week: day * 7, all: day * 70 } });
+    });
+  });
+
+  // ---- Second batch of team sheets, with the six stats supplied. Goalkeeper sheets list outfield-style stats, so only Pace (as Speed) and Passing (as Kicking) are kept; the rest are worked out from the rating. ----
+  // [position, name, nation, age, rating, height cm, weight kg, squad number, [pace, shooting, passing, dribbling, defending, physical]]
+  const SHEETS2 = [
+    ['Malvadao', '4-3-3 staggered', [
+      ['GK','Matheus “Mala” Riberio','Brazil',19,73,188,83,1,[51,18,68,35,19,76]], ['RB','Diego “Kana” Kanao','Brazil',21,74,179,72,2,[86,32,71,78,66,69]],
+      ['CB','Luca Barreto','Brazil',20,76,187,84,4,[65,27,63,39,83,86]], ['CB','Joao Torres Mendes','Brazil',22,77,190,87,15,[61,25,67,34,86,89]],
+      ['LB','Leandro Ramaldo','Brazil',19,74,177,70,3,[88,35,69,81,68,65]], ['CDM','Marcos Duarte','Brazil',18,76,183,79,6,[59,42,79,61,78,82]],
+      ['CM','Zezinho','Brazil',21,74,178,71,8,[72,53,78,76,45,61]], ['CAM','Enzo Guilherme','Brazil',19,80,176,68,10,[85,62,88,84,29,65]],
+      ['LW','Thiago Santana','Brazil',17,75,174,66,7,[91,61,67,87,27,59]], ['ST','Rafa Moreira','Brazil',19,77,185,81,9,[82,84,58,75,23,84]],
+      ['RW','Àngel Domingo','Colombia',20,73,176,69,11,[89,55,64,82,31,62]]]],
+    ['CF Barkalona', '4-2-3-1', [
+      ['GK','Alejandro Moro','Spain',28,86,190,84,1,[54,20,79,39,21,83]], ['LB','Javier Ruiz','Spain',25,87,179,72,3,[91,41,84,86,79,73]],
+      ['CB','Sergio Montero','Spain',27,89,189,86,4,[73,29,81,44,94,91]], ['CB','Marc Estrella','Spain',24,88,187,82,5,[77,34,86,51,91,87]],
+      ['RB','Martin Gomez','Spain',23,85,180,73,2,[94,38,82,88,75,72]], ['CDM','Alejandro Espresso','Spain',29,87,183,79,6,[64,45,94,71,88,84]],
+      ['CDM','Ibrahim Boz','Cameroon',26,87,185,81,14,[69,52,87,68,91,90]], ['RM','Raphael','Brazil',25,89,177,70,7,[96,82,88,95,34,69]],
+      ['LM','Yamine Ebana','Morocco',22,88,175,67,11,[94,76,87,96,37,64]], ['CAM','Pedro Palmas','Spain',24,90,178,71,10,[83,81,97,94,35,67]],
+      ['ST','Robert Wozniak','Poland',28,90,190,88,9,[79,95,75,90,25,94]]]],
+    ['Bavaria Munich', '4-2-4', [
+      ['GK','Wang Guo','China',29,89,191,86,1,[52,19,77,38,21,84]], ['LB','Ali Ben Youssef','Tunisia',25,85,180,73,3,[82,43,81,83,78,79]],
+      ['CB','John Amoateng','Ghana',27,83,191,88,4,[72,31,75,45,92,93]], ['CB','Lukas Brandt','Germany',26,84,190,87,5,[75,35,82,48,94,91]],
+      ['RB','Felix Schmidt','Germany',24,81,179,74,2,[92,39,79,85,76,73]], ['CM','Gerald Müller','Germany',28,85,182,77,8,[68,58,93,79,68,77]],
+      ['CM','Joachim Bachmann','Germany',23,88,181,74,14,[74,62,89,86,58,70]], ['RW','Ravinho','Brazil',25,89,176,69,7,[97,84,85,96,29,68]],
+      ['ST','Kristian Kaiser','Germany',30,91,188,85,9,[87,94,73,87,24,91]], ['ST','Adler Birkenstock','Germany',24,89,193,92,10,[81,97,76,83,27,95]],
+      ['LW','Kingsley Geisel','France',24,87,177,70,11,[95,79,82,94,32,71]]]],
+    ['City of Manchester FC', '4-1-2-3', [
+      ['GK','Emiliano Varga','Argentina',28,84,190,85,1,null], ['LB','Iker Salvatierra','Spain',24,82,179,72,3,[86,38,82,79,76,70]],
+      ['CB','Francis Lowe','England',27,85,190,86,4,[68,29,72,41,91,89]], ['CB','Maël Duvall','France',25,86,187,83,5,[76,35,78,48,89,86]],
+      ['RB','Callum Wrenford','England',23,81,181,74,2,[89,35,74,82,73,71]], ['CDM','Kobi Carter-Williams','England',26,84,184,79,6,[65,49,87,68,86,84]],
+      ['CM','Simão','Portugal',25,85,180,73,8,[72,63,91,85,51,67]], ['CM','Lorenzo Amata','Italy',22,82,178,71,14,[75,56,84,81,57,64]],
+      ['LW','Teddy Bates','England',21,83,176,68,11,[93,69,76,90,31,62]], ['RW','Kwame Amanfo','Ghana',24,84,179,72,7,[95,77,71,91,34,74]],
+      ['ST','Mikkel Andersen','Denmark',27,90,188,86,9,[84,94,69,82,25,91]]]]
+  ];
+  let sheetId2 = 2001;
+  SHEETS2.forEach(([club, formation, rows]) => {
+    clubs.find(c => c.name === club).formation = formation;
+    rows.forEach(([code, name, nation, age, rating, height, weight, number, st]) => {
+      const day = (rating - 60) * 20;
+      const stats = code !== 'GK' ? Object.fromEntries(STATS.map((k, i) => [k, st[i]])) : statsFor('GK', rating, name, st ? { 2: st[2], 4: st[0] } : {});
+      players.push({ id: sheetId2++, name, club, nation, pos: PLURAL[code], code, rating, age, height, weight, number, stats, views: { day, week: day * 7, all: day * 70 } });
+    });
+  });
+
+  // ---- Saved changes: everything an admin edits, adds or deletes is kept in this browser's storage. Originals are held back so edits can be reset. ----
+  const store = {
+    get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } },
+    set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { return false; } }
+  };
+  const origPlayers = new Map(players.map(p => [p.id, JSON.parse(JSON.stringify(p))]));
+  const origClubs = new Map(clubs.map(c => [c.id, JSON.parse(JSON.stringify({ name:c.name, country:c.country, founded:c.founded, comp:c.comp, league:c.league, rating:c.rating, formation:c.formation, crest:c.crest }))]));
+  const seedIds = clubs.map(c => c.id), seedClubs = clubs.slice(), seedPlayers = players.filter(p => p.id >= 1001), seedPlayerIds = seedPlayers.map(p => p.id);
+  const saved = store.get('pb_state', null);
+  if (saved && Array.isArray(saved.players) && Array.isArray(saved.clubs)) {
+    // The old test clubs (ids 1-4) and test players (ids 1-72) are gone for good
+    players.length = 0; players.push(...saved.players.filter(p => p.id > 72));
+    clubs.length = 0; clubs.push(...saved.clubs.filter(c => c.id > 4));
+    // Clubs added to the site since this browser last saved come in too, unless the admin already deleted or replaced them
+    const seen = new Set(saved.seen || [1, 2, 3, 4]);
+    seedClubs.forEach(c => { if (!seen.has(c.id) && !clubs.some(x => x.id === c.id)) clubs.push(c); });
+    // Same for players added through team sheets
+    const seenP = new Set(saved.seenP || []);
+    seedPlayers.forEach(p => { if (!seenP.has(p.id) && !players.some(x => x.id === p.id)) players.push({ ...p, club: clubs.some(c => c.name === p.club) ? p.club : 'Free agent' }); });
+    const seedF = new Map(seedClubs.map(c => [c.id, c.formation]));
+    clubs.forEach(c => { if (!c.formation) c.formation = seedF.get(c.id) || '4-3-3'; });
+    players.forEach(p => { if (p.club !== 'Free agent' && !clubs.some(c => c.name === p.club)) p.club = 'Free agent'; });
+    // Team-sheet players saved before the new positions existed get their proper positions and formations
+    if ((saved.sheetsV || 1) < SHEETS_V) {
+      seedPlayers.forEach(sp => { const q = players.find(x => x.id === sp.id); if (q) Object.assign(q, { code: sp.code, pos: sp.pos, stats: sp.stats }); });
+      seedClubs.forEach(sc => { const q = clubs.find(x => x.id === sc.id); if (q && sc.formation) q.formation = sc.formation; });
+    }
+  }
+  rebuild();
+
+  // Rankings here are worked out from the sample ratings; with a real database, return them from your API.
+  const rankIn = (p, same) => players.filter(q => same(q) && q.rating > p.rating).length + 1;
+
+  const app = document.getElementById('app'), subnav = document.getElementById('subnav');
+  const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const norm = s => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  const fmt = n => n.toLocaleString('en-GB');
+  const ordinal = n => { const s = ['th','st','nd','rd'], v = n % 100; return n + (s[(v - 20) % 10] || s[v] || s[0]); };
+  let period = 'week';
+
+  function radar(stats) {
+    const keys = Object.keys(stats), c = 150, r = 100, n = keys.length;
+    const pt = (i, v) => { const a = -Math.PI/2 + i*2*Math.PI/n; return [c + Math.cos(a)*r*v/100, c + Math.sin(a)*r*v/100]; };
+    const ring = v => keys.map((_, i) => pt(i, v).join(',')).join(' ');
+    return `<svg viewBox="0 0 300 300" role="img" aria-label="Ability radar chart">
+      ${[33,66,100].map(v => `<polygon points="${ring(v)}" fill="none" stroke="#cbd5cc"/>`).join('')}
+      ${keys.map((_, i) => { const [x,y] = pt(i,100); return `<line x1="${c}" y1="${c}" x2="${x}" y2="${y}" stroke="#cbd5cc"/>`; }).join('')}
+      <polygon points="${keys.map((k,i) => pt(i, stats[k]).join(',')).join(' ')}" fill="#1f5c3a" fill-opacity=".35" stroke="#1f5c3a" stroke-width="2.5"/>
+      ${keys.map((k,i) => { const [x,y] = pt(i,122); return `<text x="${x}" y="${y}" text-anchor="middle" dominant-baseline="middle" font-size="13" fill="#14211a" font-family="Barlow, sans-serif">${esc(k)}</text>`; }).join('')}</svg>`;
+  }
+
+  function home() {
+    app.className = 'wide';
+    app.innerHTML = `
+      <section class="hero">
+        <h1>Every player. Every club.</h1>
+        <p class="sub">Search profiles, squads and stats from around the world.</p>
+        <div class="search">
+          <input id="q" type="search" placeholder="Search for a player" autocomplete="off" aria-label="Search for a player">
+          <ul class="results" id="results"></ul>
+        </div>
+      </section>
+      <nav class="menu" aria-label="Sections">
+        <a class="primary" href="#/trending">Trending <span>Players getting the most views</span></a>
+        <a href="#/players">Players <span>Browse all profiles</span></a>
+        <a href="#/clubs">Clubs <span>Squads, stadiums, history</span></a>
+        <a href="#/leagues">Leagues <span>Divisions and their teams</span></a>
+        <a href="#/nations">Nations <span>National teams and players</span></a>
+      </nav>`;
+    const input = document.getElementById('q'), list = document.getElementById('results');
+    input.addEventListener('input', () => {
+      const t = norm(input.value.trim());
+      if (!t) { list.classList.remove('open'); return; }
+      const m = players.filter(p => norm(p.name).includes(t)).slice(0, 6);
+      list.innerHTML = m.length ? m.map(p => `<li><a href="#/player/${p.id}">${esc(p.name)}<small>${esc(p.club)}</small></a></li>`).join('')
+                                : '<li class="empty">No players found. Check the spelling or try a surname.</li>';
+      list.classList.add('open');
+    });
+    input.addEventListener('keydown', e => {
+      if (e.key === 'Enter') { const a = list.querySelector('a'); if (a) location.hash = a.getAttribute('href'); }
+      if (e.key === 'Escape') list.classList.remove('open');
+    });
+  }
+
+  function trending() {
+    app.className = '';
+    const list = [...players].sort((a, b) => b.views[period] - a.views[period]).slice(0, 20), top = list[0].views[period];
+    const tab = (k, l) => `<button data-period="${k}" aria-pressed="${period === k}">${l}</button>`;
+    app.innerHTML = `
+      <h1 class="page">Trending players</h1>
+      <p class="sub">The most viewed profiles, counting signed-in users and visitors.</p>
+      <div class="tabs" role="group" aria-label="Time period">${tab('day','Today')}${tab('week','This week')}${tab('all','All time')}</div>
+      <ol class="rows">${list.map((p, i) => `
+        <li><a href="#/player/${p.id}">
+          <span class="rk">${i + 1}</span>
+          <span><span class="nm">${esc(p.name)}</span> <span class="meta">${esc(p.club)}</span>
+            <span class="bar"><i style="width:${Math.round(p.views[period] / top * 100)}%"></i></span></span>
+          <span class="views">${fmt(p.views[period])}<small>views</small></span>
+        </a></li>`).join('')}</ol>`;
+    app.querySelector('.tabs').addEventListener('click', e => {
+      const b = e.target.closest('button'); if (b) { period = b.dataset.period; trending(); }
+    });
+  }
+
+  function playersPage() {
+    app.className = '';
+    app.innerHTML = `
+      <h1 class="page">Players</h1>
+      <p class="sub">Select a player to see their profile.</p>
+      ${isAdmin() ? '<p style="margin-top:14px"><a class="btn" href="#/edit/player/new">Add player</a></p>' : ''}
+      <input class="filter" id="f" type="search" placeholder="Filter by name or club" aria-label="Filter players">
+      <ul class="rows" id="plist"></ul>`;
+    const f = document.getElementById('f'), ul = document.getElementById('plist');
+    const draw = () => {
+      const t = norm(f.value.trim());
+      const m = players.filter(p => norm(p.name + ' ' + p.club + ' ' + p.nation).includes(t)).sort((a, b) => b.rating - a.rating);
+      ul.innerHTML = m.length ? m.map(p => `
+        <li><a href="#/player/${p.id}">
+          <span class="rk">${p.rating}</span>
+          <span><span class="nm">${esc(p.name)}</span><br><span class="meta">${esc(p.club)} · ${esc(p.nation)}</span></span>
+          <span class="meta">${esc(p.pos)}</span>
+        </a></li>`).join('') : '<li class="empty-msg">No players match that search. Try a different name or club.</li>';
+    };
+    f.addEventListener('input', draw); draw();
+  }
+
+  function profile(id) {
+    app.className = '';
+    const p = players.find(x => String(x.id) === String(id));
+    if (!p) { app.innerHTML = '<p class="empty-msg">We couldn’t find that player. <a href="#/players">Browse all players</a>.</p>'; return; }
+    document.title = p.name + ' – Pitchbook';
+    const r = { pos: rankIn(p, q => q.pos === p.pos), league: rankIn(p, q => q.league === p.league), global: rankIn(p, () => true) };
+    app.innerHTML = `
+      <div class="toprow"><a class="back" href="#/players">‹ All players</a>${adminBtn('player', p.id)}</div>
+      <section class="head">
+        <div><h1>${esc(p.name)}</h1><p>${clubLink(p)} · ${nationLink(p)}</p></div>
+        <div class="rating"><b>${p.rating}</b><span>Rating</span></div>
+      </section>
+      <section class="facts" aria-label="Player details">
+        <div class="fact"><b>${p.age}</b><span>Age</span></div>
+        <div class="fact"><b>${p.height} cm</b><span>Height</span></div>
+        <div class="fact"><b>${p.weight} kg</b><span>Weight</span></div>
+        <div class="fact"><b>${p.number}</b><span>Squad number</span></div>
+      </section>
+      <h2>Rankings</h2>
+      <section class="ranks">
+        <a class="rank" href="#/ranking/pos/${p.code}/${p.id}"><b>${ordinal(r.pos)}</b>Among ${esc(p.pos)}<small>See full ranking ›</small></a>
+        ${p.league ? `<a class="rank" href="#/ranking/league/${encodeURIComponent(p.league)}/${p.id}"><b>${ordinal(r.league)}</b>In the ${esc(p.league)}<small>See full ranking ›</small></a>` : '<div class="rank"><b>–</b>No league</div>'}
+        <a class="rank" href="#/ranking/global/all/${p.id}"><b>${ordinal(r.global)}</b>Globally<small>See full ranking ›</small></a>
+      </section>
+      <h2>Ability profile</h2>
+      <section class="ability">
+        ${radar(p.stats)}
+        <div>${Object.entries(p.stats).map(([k, v]) => `<div class="stat"><span>${k}</span><span class="bar"><i style="width:${v}%"></i></span><b>${v}</b></div>`).join('')}</div>
+      </section>
+      <p class="note">Sample data for layout purposes. Rankings are among the players in this sample.</p>`;
+  }
+
+  const clubLink = p => { const c = clubs.find(x => x.name === p.club); return c ? `<a href="#/club/${c.id}">${esc(p.club)}</a>` : esc(p.club); };
+  const SHAPES = {
+    shield:'M50 4 L92 18 V58 C92 88 70 108 50 116 C30 108 8 88 8 58 V18 Z',
+    round:'M50 6 a54 54 0 1 0 0 108 a54 54 0 1 0 0 -108 Z',
+    rounded:'M22 6 H78 Q94 6 94 22 V98 Q94 114 78 114 H22 Q6 114 6 98 V22 Q6 6 22 6 Z',
+    hexagon:'M50 3 L93 27 V93 L50 117 L7 93 V27 Z',
+    diamond:'M50 3 L96 60 L50 117 L4 60 Z',
+    banner:'M8 6 H92 V80 L50 116 L8 80 Z'
+  };
+  const PATTERNS = {
+    none:'',
+    stripes:'<rect x="22" width="14" height="120"/><rect x="50" width="14" height="120"/><rect x="78" width="14" height="120"/>',
+    hoops:'<rect y="20" width="100" height="14"/><rect y="48" width="100" height="14"/><rect y="76" width="100" height="14"/><rect y="104" width="100" height="14"/>',
+    halves:'<rect x="50" width="50" height="120"/>',
+    diagonal:'<polygon points="0,95 0,65 100,25 100,55"/>',
+    chevron:'<polygon points="0,38 50,72 100,38 100,60 50,94 0,60"/>'
+  };
+  const starPts = (cx, cy, R, r) => Array.from({ length: 10 }, (_, i) => { const a = -Math.PI / 2 + i * Math.PI / 5, d = i % 2 ? r : R; return (cx + Math.cos(a) * d).toFixed(1) + ',' + (cy + Math.sin(a) * d).toFixed(1); }).join(' ');
+  let crestN = 0;
+  const crestSvg = (cr, s, name = '') => {
+    const id = 'cr' + (crestN++), d = SHAPES[cr.shape] || SHAPES.shield, E = cr.emblemColor;
+    const txt = (cr.text || name.split(' ').slice(0, 2).map(w => w[0] || '').join('')).slice(0, 3).toUpperCase();
+    const emb = { text: txt ? `<text x="50" y="${cr.stars ? 76 : 70}" text-anchor="middle" font-family="Barlow Condensed, sans-serif" font-weight="800" font-size="${[0, 56, 46, 36][txt.length]}" fill="${E}">${esc(txt)}</text>` : '',
+      star: `<polygon points="${starPts(50, 64, 26, 11)}" fill="${E}"/>`,
+      ball: `<circle cx="50" cy="64" r="22" fill="${E}"/><polygon points="${starPts(50, 64, 9, 9)}" fill="${cr.base}"/>`,
+      crown: `<path d="M26 88 L22 48 L40 66 L50 42 L60 66 L78 48 L74 88 Z" fill="${E}"/>`,
+      bolt: `<polygon points="56,34 34,68 49,68 43,96 68,58 52,58" fill="${E}"/>`, none: '' }[cr.emblem] || '';
+    const n = cr.stars | 0, stars = Array.from({ length: n }, (_, i) => `<polygon points="${starPts(50 + (i - (n - 1) / 2) * 15, 24, 7, 3)}" fill="${E}"/>`).join('');
+    return `<svg width="${s}" height="${Math.round(s * 1.2)}" viewBox="0 0 100 120" role="img" aria-label="${esc(name)} crest" style="flex-shrink:0"><defs><clipPath id="${id}"><path d="${d}"/></clipPath></defs><path d="${d}" fill="${cr.base}"/><g clip-path="url(#${id})" fill="${cr.patColor}">${PATTERNS[cr.pattern] || ''}</g><path d="${d}" fill="none" stroke="${cr.trim}" stroke-width="5"/>${emb}${stars}</svg>`;
+  };
+  const logo = (c, s) => crestSvg(c.crest, s, c.name);
+  const POS_ORDER = ['GK','LB','LWB','CB','RB','RWB','CDM','CM','CAM','LM','RM','LW','CF','ST','RW'];
+  const sorts = {
+    pos: (a, b) => POS_ORDER.indexOf(a.code) - POS_ORDER.indexOf(b.code) || b.rating - a.rating,
+    age: (a, b) => a.age - b.age || b.rating - a.rating,
+    name: (a, b) => a.name.localeCompare(b.name),
+    ovr: (a, b) => b.rating - a.rating
+  };
+  let squadSort = 'pos';
+  const sqHead = '<div class="sqh"><span>Pos</span><span>Player</span><span>Age</span><span>OVR</span></div>';
+  const sqRowOf = f => p => `<li><a href="#/player/${p.id}"><span class="pos">${p.code}</span><span><span class="nm">${esc(p.name)}</span><br><span class="meta">${esc(p[f])}</span></span><span class="meta">${p.age}</span><b>${p.rating}</b></a></li>`;
+  const sqRow = sqRowOf('nation');
+
+  function clubsPage() {
+    app.className = '';
+    app.innerHTML = `<h1 class="page">Clubs</h1><p class="sub">Select a club to see its squad.</p>
+      ${isAdmin() ? '<p style="margin-top:14px"><a class="btn" href="#/edit/club/new">Add club</a></p>' : ''}
+      <div class="cgrid">${[...clubs].sort((a, b) => (b.ovr ?? -1) - (a.ovr ?? -1)).map(c => `
+        <a class="ccard" href="#/club/${c.id}">${logo(c, 52)}<span><b>${esc(c.name)}</b>
+          <span class="meta">${esc(c.country)} · ${esc(c.league)}</span><br><span class="meta">Overall ${c.ovr ?? '–'}</span></span></a>`).join('')}</div>`;
+  }
+
+  function clubPage(id) {
+    app.className = '';
+    const c = clubs.find(x => String(x.id) === String(id));
+    if (!c) { app.innerHTML = '<p class="empty-msg">We couldn’t find that club. <a href="#/clubs">Browse all clubs</a>.</p>'; return; }
+    document.title = c.name + ' – Pitchbook';
+    const tab = (k, l) => `<button data-s="${k}" aria-pressed="${squadSort === k}">${l}</button>`;
+    app.innerHTML = `
+      <div class="toprow"><a class="back" href="#/clubs">‹ All clubs</a>${adminBtn('club', c.id)}</div>
+      <section class="chead">${logo(c, 88)}<div><h1>${esc(c.name)}</h1>
+        <p>${esc(c.country)} · <a href="#/league/${encodeURIComponent(c.league)}">${esc(c.league)}</a>${c.founded ? ' · Est. ' + c.founded : ''}</p>${c.comp ? `<span class="badge">${esc(c.comp)}</span>` : ''}</div></section>
+      <section class="cbox">
+        <div class="ratings">
+          <div class="ovr"><b>${c.ovr ?? '–'}</b><span>Overall rating</span></div>
+          <div class="lines"><div class="line"><b>${c.att ?? '–'}</b>Attack</div><div class="line"><b>${c.mid ?? '–'}</b>Midfield</div><div class="line"><b>${c.def ?? '–'}</b>Defence</div></div>
+        </div>
+        ${c.n < 11 ? `<p class="note" style="margin-top:14px">Only ${c.n} of the 11 starting places are filled so far.</p>` : ''}
+        <h2>Starting 11 · ${esc(c.formation || '4-3-3')}</h2>
+        <div class="pitch">${c.xi.map((p, i) => !p ? '' : `<a class="dot" style="left:${(FORMS[c.formation] || SLOTS)[i][1]}%;top:${(FORMS[c.formation] || SLOTS)[i][2]}%" href="#/player/${p.id}"><b>${p.rating}</b><span>${esc(p.name.split(' ').slice(-1)[0])}</span></a>`).join('')}</div>
+        ${sqHead}<ul class="sq">${c.xi.filter(Boolean).map(sqRow).join('')}</ul>
+      </section>
+      <h2>Squad</h2>
+      <div class="tabs" role="group" aria-label="Sort squad">${tab('pos', 'Position')}${tab('age', 'Age')}${tab('name', 'Name')}${tab('ovr', 'Overall')}</div>
+      ${sqHead}<ul class="sq" id="squad"></ul>`;
+    const draw = () => { document.getElementById('squad').innerHTML = c.squad.length ? [...c.squad].sort(sorts[squadSort]).map(sqRow).join('') : '<li class="empty-msg">No players added yet.</li>'; };
+    draw();
+    app.querySelector('.tabs').addEventListener('click', e => {
+      const b = e.target.closest('button'); if (!b) return;
+      squadSort = b.dataset.s;
+      app.querySelectorAll('.tabs button').forEach(x => x.setAttribute('aria-pressed', x.dataset.s === squadSort));
+      draw();
+    });
+  }
+
+  const nationLink = p => `<a href="#/nation/${p.nation.toLowerCase()}">${esc(p.nation)}</a>`;
+
+  function nationsPage() {
+    app.className = '';
+    app.innerHTML = `<h1 class="page">Nations</h1><p class="sub">Select a nation to see its squad.</p>
+      <div class="cgrid">${[...nations].sort((a, b) => (b.ovr ?? -1) - (a.ovr ?? -1)).map(n => `
+        <a class="ccard" href="#/nation/${n.id}"><span class="flag">${n.flag}</span><span><b>${esc(n.name)}</b>
+          <span class="meta">${n.squad.length} player${n.squad.length === 1 ? '' : 's'}</span><br><span class="meta">Overall ${n.ovr ?? '–'}</span></span></a>`).join('')}</div>`;
+  }
+
+  function nationPage(id) {
+    app.className = '';
+    const n = nations.find(x => x.id === id);
+    if (!n) { app.innerHTML = '<p class="empty-msg">We couldn’t find that nation. <a href="#/nations">Browse all nations</a>.</p>'; return; }
+    document.title = n.name + ' – Pitchbook';
+    const row = sqRowOf('club'), v = x => x ?? '–';
+    const tab = (k, l) => `<button data-s="${k}" aria-pressed="${squadSort === k}">${l}</button>`;
+    app.innerHTML = `
+      <a class="back" href="#/nations">‹ All nations</a>
+      <section class="chead"><span class="flag" role="img" aria-label="${esc(n.name)} flag">${n.flag}</span><div><h1>${esc(n.name)}</h1></div></section>
+      <section class="cbox">
+        <div class="ratings">
+          <div class="ovr"><b>${v(n.ovr)}</b><span>Overall rating</span></div>
+          <div class="lines"><div class="line"><b>${v(n.att)}</b>Attack</div><div class="line"><b>${v(n.mid)}</b>Midfield</div><div class="line"><b>${v(n.def)}</b>Defence</div></div>
+        </div>
+        ${n.n < 11 ? `<p class="note" style="margin-top:14px">Only ${n.n} of the 11 starting places can be filled with the players we have so far.</p>` : ''}
+        <h2>Starting 11</h2>
+        <div class="pitch">${n.xi.map((p, i) => p ? `<a class="dot" style="left:${SLOTS[i][1]}%;top:${SLOTS[i][2]}%" href="#/player/${p.id}"><b>${p.rating}</b><span>${esc(p.name.split(' ').slice(-1)[0])}</span></a>` : '').join('')}</div>
+        ${sqHead}<ul class="sq">${n.xi.filter(Boolean).map(row).join('')}</ul>
+      </section>
+      <h2>Squad</h2>
+      <div class="tabs" role="group" aria-label="Sort squad">${tab('pos', 'Position')}${tab('age', 'Age')}${tab('name', 'Name')}${tab('ovr', 'Overall')}</div>
+      ${sqHead}<ul class="sq" id="squad"></ul>`;
+    const draw = () => { document.getElementById('squad').innerHTML = [...n.squad].sort(sorts[squadSort]).map(row).join(''); };
+    draw();
+    app.querySelector('.tabs').addEventListener('click', e => {
+      const b = e.target.closest('button'); if (!b) return;
+      squadSort = b.dataset.s;
+      app.querySelectorAll('.tabs button').forEach(x => x.setAttribute('aria-pressed', x.dataset.s === squadSort));
+      draw();
+    });
+  }
+
+  // ---- Accounts (prototype: stored in this browser only) ----
+  const hashPw = async (pw, salt) => [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(salt + pw)))].map(b => b.toString(16).padStart(2, '0')).join('');
+  const me = () => { const n = store.get('pb_session', null); return store.get('pb_users', []).find(u => u.name === n) || null; };
+  const isAdmin = () => !!(me() && me().admin);
+  const renderAuth = () => { const u = me(), a = document.getElementById('auth'); a.textContent = u ? u.name + (u.admin ? ' · Admin' : '') : 'Log in'; };
+  const adminBtn = (k, id) => isAdmin() ? `<a class="btn" href="#/edit/${k}/${id}">Edit ${k}</a>` : '';
+  let authMode = 'in';
+
+  function loginPage() {
+    app.className = '';
+    const u = me();
+    if (u) {
+      app.innerHTML = `<h1 class="page">Your account</h1>
+        <p class="sub">Signed in as <b>${esc(u.name)}</b>.${u.admin ? ' You have admin access, so you’ll see Edit buttons on player and club pages.' : ''}</p>
+        <p style="margin-top:24px"><button class="btn" id="out">Log out</button>${u.admin ? ' <button class="btn ghost" id="wipe">Reset all site edits</button>' : ''}</p>`;
+      document.getElementById('out').addEventListener('click', () => { store.set('pb_session', null); location.hash = '#/'; });
+      const w = document.getElementById('wipe'); if (w) sure(w, () => { store.set('pb_state', null); location.reload(); });
+      return;
+    }
+    const up = authMode === 'up', tab = (k, l) => `<button data-m="${k}" aria-pressed="${authMode === k}">${l}</button>`;
+    app.innerHTML = `<h1 class="page">${up ? 'Sign up' : 'Log in'}</h1>
+      <div class="tabs" role="group" aria-label="Log in or sign up">${tab('in', 'Log in')}${tab('up', 'Sign up')}</div>
+      <form class="authform" id="af">
+        <label class="fld"><span>Name</span><input name="name" autocomplete="username" maxlength="30" required></label>
+        <label class="fld"><span>Password</span><input name="pw" type="password" autocomplete="${up ? 'new-password' : 'current-password'}" required></label>
+        <p class="err" id="err" role="alert"></p>
+        <div><button class="btn" type="submit">${up ? 'Create account' : 'Log in'}</button></div>
+      </form>
+      <p class="note">Prototype: accounts are saved in this browser only, and the first account created becomes the admin.</p>`;
+    app.querySelector('.tabs').addEventListener('click', e => { const b = e.target.closest('button'); if (b) { authMode = b.dataset.m; loginPage(); } });
+    document.getElementById('af').addEventListener('submit', async e => {
+      e.preventDefault();
+      const f = e.target, err = document.getElementById('err'), name = f.name.value.trim(), pw = f.pw.value;
+      err.textContent = '';
+      try {
+        const list = store.get('pb_users', []), found = list.find(x => x.name.toLowerCase() === name.toLowerCase());
+        if (up) {
+          if (name.length < 3) { err.textContent = 'Your name needs at least 3 characters.'; return; }
+          if (pw.length < 6) { err.textContent = 'Your password needs at least 6 characters.'; return; }
+          if (found) { err.textContent = 'That name is already taken. Try another, or log in.'; return; }
+          const salt = [...crypto.getRandomValues(new Uint8Array(8))].map(b => b.toString(16).padStart(2, '0')).join('');
+          list.push({ name, salt, hash: await hashPw(pw, salt), admin: list.length === 0 });
+          if (!store.set('pb_users', list)) { err.textContent = 'We couldn’t save your account on this device. Check that your browser allows site storage.'; return; }
+          store.set('pb_session', name);
+        } else {
+          if (!found || found.hash !== await hashPw(pw, found.salt)) { err.textContent = 'That name and password don’t match.'; return; }
+          store.set('pb_session', found.name);
+        }
+        location.hash = '#/';
+      } catch (x) { err.textContent = 'Something went wrong. Please try again.'; }
+    });
+  }
+
+  // ---- Admin editing: create, edit and delete players and clubs ----
+  const applyPlayer = (p, o) => { Object.assign(p, o); p.pos = PLURAL[p.code]; };
+  const clone = o => JSON.parse(JSON.stringify(o));
+  const opt = (v, cur, label) => `<option value="${esc(v)}"${v === cur ? ' selected' : ''}>${esc(label || v)}</option>`;
+  const num = (n, l, v, min, max) => `<label class="fld"><span>${l}</span><input name="${n}" type="number" step="1" value="${v}" min="${min}" max="${max}" required></label>`;
+  const adminOnly = () => { app.className = ''; app.innerHTML = '<p class="empty-msg">Only the site admin can edit this. <a href="#/login">Log in</a>.</p>'; };
+  const persist = () => store.set('pb_state', {
+    players: players.map(p => ({ id:p.id, name:p.name, club:p.club, nation:p.nation, pos:p.pos, code:p.code, rating:p.rating, age:p.age, height:p.height, weight:p.weight, number:p.number, stats:p.stats, views:p.views })),
+    clubs: clubs.map(c => ({ id:c.id, name:c.name, country:c.country, founded:c.founded, comp:c.comp, league:c.league, rating:c.rating, formation:c.formation, crest:c.crest })),
+    seen: seedIds, seenP: seedPlayerIds, sheetsV: SHEETS_V
+  });
+  const renameClub = (from, to) => players.forEach(p => { if (p.club === from) p.club = to; });
+  const sure = (btn, run) => btn.addEventListener('click', () => { if (btn.dataset.sure) run(); else { btn.dataset.sure = '1'; btn.textContent = 'Click again to confirm'; } });
+  const PALETTE = ['#c8102e','#e4572e','#f2a33a','#f5d547','#2e9e5b','#1f5c3a','#1e7f9c','#1d3a6b','#6a3fa0','#d6459b','#7b4a2b','#000000','#2b2f33','#8a8f94','#d9dde1','#ffffff'];
+  const notFound = (what, href) => { app.innerHTML = `<p class="empty-msg">We couldn’t find that ${what}. <a href="${href}">Browse all ${what}s</a>.</p>`; };
+
+  function editPlayer(id) {
+    if (!isAdmin()) return adminOnly();
+    app.className = '';
+    const isNew = id === 'new', club0 = clubs[0] ? clubs[0].name : 'Free agent';
+    const p = isNew ? { name: '', club: club0, nation: 'England', code: 'CM', rating: 70, age: 22, height: 180, weight: 74,
+                        number: [...Array(88).keys()].map(i => i + 12).find(n => !players.some(q => q.club === club0 && q.number === n)) || 99,
+                        stats: Object.fromEntries(STATS.map(k => [k, 60])) }
+                    : players.find(x => String(x.id) === String(id));
+    if (!p) return notFound('player', '#/players');
+    const set = code => code === 'GK' ? GK_STATS : STATS, vals = Object.values(p.stats);
+    app.innerHTML = `
+      <a class="back" href="${isNew ? '#/players' : '#/player/' + p.id}">‹ Cancel</a>
+      <h1 class="page">${isNew ? 'Add player' : 'Edit player'}</h1>
+      <form class="eform" id="ef">
+        <label class="fld wide"><span>Name</span><input name="name" value="${esc(p.name)}" maxlength="40" required></label>
+        <label class="fld"><span>Club</span><select name="club">${opt('Free agent', p.club)}${clubs.map(c => opt(c.name, p.club)).join('')}</select></label>
+        <label class="fld"><span>Nation</span><select name="nation">${Object.keys(FLAGS).sort().map(k => opt(k, p.nation)).join('')}</select></label>
+        <label class="fld"><span>Position</span><select name="code">${Object.keys(PLURAL).map(k => opt(k, p.code, k + ' · ' + PLURAL[k])).join('')}</select></label>
+        ${num('rating', 'Overall rating', p.rating, 1, 99)}${num('age', 'Age', p.age, 15, 50)}${num('height', 'Height (cm)', p.height, 140, 220)}${num('weight', 'Weight (kg)', p.weight, 40, 130)}${num('number', 'Squad number', p.number, 1, 99)}
+        <h2 class="wide">Stats</h2>
+        ${set(p.code).map((k, i) => `<label class="fld"><span class="sl">${k}</span><input name="s${i}" type="number" step="1" value="${vals[i]}" min="1" max="99" required></label>`).join('')}
+        <p class="err wide" id="err" role="alert"></p>
+        <div class="acts wide"><button class="btn" type="submit">${isNew ? 'Add player' : 'Save changes'}</button>
+          ${!isNew && origPlayers.has(p.id) ? '<button class="btn ghost" type="button" id="reset">Reset to original</button>' : ''}
+          ${isNew ? '' : '<button class="btn ghost" type="button" id="del">Delete player</button>'}</div>
+      </form>`;
+    const f = document.getElementById('ef'), err = document.getElementById('err');
+    f.code.addEventListener('change', () => app.querySelectorAll('.sl').forEach((el, i) => { el.textContent = set(f.code.value)[i]; }));
+    f.addEventListener('submit', e => {
+      e.preventDefault();
+      const g = n => f[n].value, name = g('name').trim();
+      if (!name) { err.textContent = 'Please enter a name.'; return; }
+      const o = { name, club: g('club'), nation: g('nation'), code: g('code'), rating: +g('rating'), age: +g('age'), height: +g('height'), weight: +g('weight'), number: +g('number'),
+                  stats: Object.fromEntries(set(g('code')).map((k, i) => [k, +g('s' + i)])) };
+      let t = p;
+      if (isNew) { t = { id: Math.max(0, ...players.map(q => q.id)) + 1, views: { day: 0, week: 0, all: 0 } }; players.push(t); }
+      applyPlayer(t, o); rebuild();
+      if (!persist()) { err.textContent = 'Your changes show now, but couldn’t be saved on this device, so they’ll be lost on refresh.'; return; }
+      location.hash = '#/player/' + t.id;
+    });
+    const reset = document.getElementById('reset');
+    if (reset) reset.addEventListener('click', () => {
+      const orig = clone(origPlayers.get(p.id)), entry = [...origClubs].find(([, o]) => o.name === orig.club), cur = entry && clubs.find(c => c.id === entry[0]);
+      Object.assign(p, orig, { club: cur ? cur.name : 'Free agent' }); rebuild(); persist(); location.hash = '#/player/' + p.id;
+    });
+    const del = document.getElementById('del');
+    if (del) sure(del, () => { players.splice(players.indexOf(p), 1); rebuild(); persist(); location.hash = '#/players'; });
+  }
+
+  function editClub(id) {
+    if (!isAdmin()) return adminOnly();
+    app.className = '';
+    const isNew = id === 'new';
+    const c = isNew ? { name: '', country: 'England', founded: null, comp: '', league: clubs[0] ? clubs[0].league : 'Meridian League',
+                        crest: { shape:'shield', base:'#1f5c3a', pattern:'none', patColor:'#153f28', trim:'#f5d547', emblem:'text', emblemColor:'#f5d547', text:'', stars:0 } }
+                    : clubs.find(x => String(x.id) === String(id));
+    if (!c) return notFound('club', '#/clubs');
+    const cr = c.crest;
+    const txt = (n, l, v, extra = '') => `<label class="fld"><span>${l}</span><input name="${n}" value="${esc(v)}" maxlength="40" ${extra}></label>`;
+    const sel = (n, l, o, cur) => `<label class="fld"><span>${l}</span><select name="${n}">${o.map(([v, t]) => opt(v, cur, t)).join('')}</select></label>`;
+    const pick = (n, l, v) => `<div class="fld wide"><span>${l}</span><div class="colr"><input name="${n}" type="color" value="${v}" aria-label="${l}"><span class="sw">${PALETTE.map(h => `<button type="button" class="swb" data-t="${n}" data-c="${h}" style="background:${h}" aria-label="${h}"></button>`).join('')}</span></div></div>`;
+    app.innerHTML = `
+      <a class="back" href="${isNew ? '#/clubs' : '#/club/' + c.id}">‹ Cancel</a>
+      <h1 class="page">${isNew ? 'Add club' : 'Edit club'}</h1>
+      <form class="eform" id="ef">
+        ${txt('name', 'Club name', c.name, 'required')}${txt('country', 'Country', c.country, 'required')}
+        <label class="fld"><span>Founded (optional)</span><input name="founded" type="number" step="1" min="1800" max="2026" value="${c.founded ?? ''}"></label>
+        <label class="fld"><span>League</span><input name="league" value="${esc(c.league)}" maxlength="40" list="lg" required></label>
+        <datalist id="lg">${[...new Set(clubs.map(x => x.league))].map(l => `<option value="${esc(l)}">`).join('')}</datalist>
+        ${sel('formation', 'Formation', Object.keys(FORMS).map(k => [k, k]), c.formation || '4-3-3')}
+        <label class="fld"><span>Overall rating (leave blank to work it out from the Starting 11)</span><input name="rating" type="number" step="1" min="1" max="99" value="${c.rating ?? ''}"></label>
+        <label class="fld wide"><span>European competition (leave blank if none)</span><input name="comp" value="${esc(c.comp)}" maxlength="40"></label>
+        <h2 class="wide">Crest</h2>
+        <div class="prev wide" id="prev"></div>
+        ${sel('shape', 'Shape', [['shield','Shield'],['round','Round'],['rounded','Rounded square'],['hexagon','Hexagon'],['diamond','Diamond'],['banner','Banner']], cr.shape)}
+        ${sel('pattern', 'Pattern', [['none','Plain'],['stripes','Stripes'],['hoops','Hoops'],['halves','Halves'],['diagonal','Sash'],['chevron','Chevron']], cr.pattern)}
+        ${sel('emblem', 'Emblem', [['text','Letters'],['star','Star'],['ball','Ball'],['crown','Crown'],['bolt','Bolt'],['none','None']], cr.emblem)}
+        <label class="fld"><span>Letters (up to 3, blank = initials)</span><input name="text" value="${esc(cr.text)}" maxlength="3"></label>
+        ${sel('stars', 'Stars above emblem', [0, 1, 2, 3, 4, 5].map(n => [String(n), String(n)]), String(cr.stars))}
+        ${pick('base', 'Background colour', cr.base)}${pick('patColor', 'Pattern colour', cr.patColor)}${pick('trim', 'Border colour', cr.trim)}${pick('emblemColor', 'Emblem and stars colour', cr.emblemColor)}
+        <p class="err wide" id="err" role="alert"></p>
+        <div class="acts wide"><button class="btn" type="submit">${isNew ? 'Add club' : 'Save changes'}</button>
+          ${!isNew && origClubs.has(c.id) ? '<button class="btn ghost" type="button" id="reset">Reset to original</button>' : ''}
+          ${isNew ? '' : '<button class="btn ghost" type="button" id="del">Delete club</button>'}</div>
+      </form>`;
+    const f = document.getElementById('ef'), err = document.getElementById('err'), prev = document.getElementById('prev');
+    const readCrest = () => ({ shape: f.shape.value, pattern: f.pattern.value, emblem: f.emblem.value, text: f.text.value.trim().slice(0, 3), stars: +f.stars.value,
+                               base: f.base.value, patColor: f.patColor.value, trim: f.trim.value, emblemColor: f.emblemColor.value });
+    const upd = () => { prev.innerHTML = crestSvg(readCrest(), 120, f.name.value); };
+    f.addEventListener('input', upd); f.addEventListener('change', upd);
+    f.addEventListener('click', e => { const b = e.target.closest('.swb'); if (b) { f[b.dataset.t].value = b.dataset.c; upd(); } });
+    upd();
+    f.addEventListener('submit', e => {
+      e.preventDefault();
+      const g = n => f[n].value.trim(), o = { name: g('name'), country: g('country'), founded: g('founded') ? +g('founded') : null, rating: g('rating') ? +g('rating') : null, formation: g('formation'), comp: g('comp'), league: g('league'), crest: readCrest() };
+      if (!o.name || !o.country || !o.league) { err.textContent = 'Name, country and league can’t be blank.'; return; }
+      if (o.name.toLowerCase() === 'free agent' || clubs.some(x => x !== c && x.name.toLowerCase() === o.name.toLowerCase())) { err.textContent = 'Another club already uses that name. Try a different one.'; return; }
+      let t = c;
+      if (isNew) { t = { id: Math.max(0, ...clubs.map(x => x.id)) + 1 }; clubs.push(t); } else renameClub(c.name, o.name);
+      Object.assign(t, o); rebuild();
+      if (!persist()) { err.textContent = 'Your changes show now, but couldn’t be saved on this device, so they’ll be lost on refresh.'; return; }
+      location.hash = '#/club/' + t.id;
+    });
+    const reset = document.getElementById('reset');
+    if (reset) reset.addEventListener('click', () => {
+      const o = clone(origClubs.get(c.id)); renameClub(c.name, o.name); Object.assign(c, o); rebuild(); persist(); location.hash = '#/club/' + c.id;
+    });
+    const del = document.getElementById('del');
+    if (del) sure(del, () => { renameClub(c.name, 'Free agent'); clubs.splice(clubs.indexOf(c), 1); rebuild(); persist(); location.hash = '#/clubs'; });
+  }
+
+  // Full ranking list behind each box on a player's profile (by position, by league, or global)
+  function rankingPage(kind, key, pid) {
+    app.className = '';
+    key = key ? decodeURIComponent(key) : '';
+    const me = pid ? players.find(x => String(x.id) === String(pid)) : null;
+    const cap = t => t.charAt(0).toUpperCase() + t.slice(1);
+    const filters = { pos: [cap(PLURAL[key] || ''), p => p.code === key], league: [key, p => p.league === key], global: ['Global ranking', () => true] };
+    const f = filters[kind];
+    if (!f || (kind === 'pos' && !PLURAL[key]) || (kind === 'league' && !key)) { app.innerHTML = '<p class="empty-msg">We couldn’t find that ranking. <a href="#/players">Browse all players</a>.</p>'; return; }
+    const list = players.filter(f[1]).sort((a, b) => b.rating - a.rating || a.name.localeCompare(b.name));
+    const rankOf = p => list.filter(q => q.rating > p.rating).length + 1;
+    const tabs = me ? [['pos', cap(PLURAL[me.code]), me.code], ...(me.league ? [['league', me.league, me.league]] : []), ['global', 'Global', 'all']]
+      .map(([k, l, v]) => `<a href="#/ranking/${k}/${encodeURIComponent(v)}/${me.id}"${k === kind ? ' aria-current="page"' : ''}>${esc(l)}</a>`).join('') : '';
+    app.innerHTML = `
+      ${me ? `<a class="back" href="#/player/${me.id}">‹ ${esc(me.name)}</a>` : '<a class="back" href="#/players">‹ All players</a>'}
+      <h1 class="page">${esc(f[0])}</h1>
+      <p class="sub">Ranked by overall rating · ${list.length} player${list.length === 1 ? '' : 's'}</p>
+      ${tabs ? `<div class="tabs" role="navigation" aria-label="Ranking type">${tabs}</div>` : ''}
+      <ol class="rows">${list.map(p => `
+        <li${me && p.id === me.id ? ' class="me"' : ''}><a href="#/player/${p.id}">
+          <span class="rk">${rankOf(p)}</span>
+          <span><span class="nm">${esc(p.name)}</span><br><span class="meta">${esc(p.club)} · ${esc(p.nation)}${kind === 'pos' ? '' : ' · ' + p.code}</span></span>
+          <span class="views">${p.rating}<small>overall</small></span>
+        </a></li>`).join('')}</ol>`;
+    const row = app.querySelector('li.me');
+    if (row) setTimeout(() => row.scrollIntoView({ block: 'center' }), 0);
+  }
+
+  // Leagues are worked out from the clubs. A league's country is the one most of its clubs come from.
+  function allLeagues() {
+    const m = new Map();
+    clubs.forEach(c => {
+      if (!c.league) return;
+      const l = m.get(c.league) || { name: c.league, clubs: [], countries: {} };
+      l.clubs.push(c); l.countries[c.country] = (l.countries[c.country] || 0) + 1; m.set(c.league, l);
+    });
+    return [...m.values()].map(l => ({ ...l, country: Object.entries(l.countries).sort((a, b) => b[1] - a[1])[0][0], players: players.filter(p => p.league === l.name).length }));
+  }
+
+  function leaguesPage() {
+    app.className = '';
+    const list = allLeagues().sort((a, b) => a.country.localeCompare(b.country) || a.name.localeCompare(b.name));
+    app.innerHTML = `<h1 class="page">Leagues</h1><p class="sub">Select a league to see its teams.</p>
+      ${list.length ? `<div class="lgh"><span>League</span><span>Teams</span><span>Players</span></div>
+      <ul class="lg">${list.map(l => `<li><a href="#/league/${encodeURIComponent(l.name)}"><span><span class="nm">${esc(l.name)}</span><br><span class="meta">${esc(l.country)}</span></span><b>${l.clubs.length}</b><b>${l.players}</b></a></li>`).join('')}</ul>`
+      : '<p class="empty-msg">No leagues yet. Add a club and give it a league.</p>'}`;
+  }
+
+  function leaguePage(key) {
+    app.className = '';
+    const l = allLeagues().find(x => x.name === (key ? decodeURIComponent(key) : ''));
+    if (!l) { app.innerHTML = '<p class="empty-msg">We couldn’t find that league. <a href="#/leagues">Browse all leagues</a>.</p>'; return; }
+    const teams = [...l.clubs].sort((a, b) => (b.ovr ?? -1) - (a.ovr ?? -1) || a.name.localeCompare(b.name));
+    const rankOf = c => teams.filter(q => (q.ovr ?? -1) > (c.ovr ?? -1)).length + 1;
+    document.title = l.name + ' – Pitchbook';
+    app.innerHTML = `
+      <a class="back" href="#/leagues">‹ All leagues</a>
+      <h1 class="page">${esc(l.name)}</h1><p class="sub">${esc(l.country)}</p>
+      <section class="facts" style="grid-template-columns:repeat(2,1fr);max-width:420px">
+        <div class="fact"><b>${l.clubs.length}</b><span>Teams</span></div><div class="fact"><b>${l.players}</b><span>Players</span></div></section>
+      <h2>Teams</h2><p class="sub" style="margin:0 0 8px">Ranked by overall rating</p>
+      <ol class="rows">${teams.map(c => `
+        <li><a href="#/club/${c.id}"><span class="rk">${rankOf(c)}</span>
+          <span style="display:flex;align-items:center;gap:12px">${logo(c, 30)}<span><span class="nm">${esc(c.name)}</span><br><span class="meta">${c.squad.length} player${c.squad.length === 1 ? '' : 's'}</span></span></span>
+          <span class="views">${c.ovr ?? '–'}<small>overall</small></span></a></li>`).join('')}</ol>`;
+  }
+
+  function soon(name) {
+    app.className = '';
+    app.innerHTML = `<h1 class="page">${esc(name)}</h1><p class="sub">This page hasn’t been built yet. <a href="#/">Back to home</a>.</p>`;
+  }
+
+  function route() {
+    const [page, arg, arg2, arg3] = (location.hash.slice(1) || '/').split('/').filter(Boolean);
+    renderAuth();
+    document.title = 'Pitchbook – Football Database';
+    subnav.innerHTML = page ? [['trending','Trending'],['players','Players'],['clubs','Clubs'],['leagues','Leagues'],['nations','Nations']]
+      .map(([k, l]) => `<a href="#/${k}" class="${page === k || (page === 'player' && k === 'players') || (page === 'club' && k === 'clubs') || (page === 'nation' && k === 'nations') || (page === 'league' && k === 'leagues') ? 'on' : ''}">${l}</a>`).join('') : '';
+    if (!page) home();
+    else if (page === 'trending') trending();
+    else if (page === 'players') playersPage();
+    else if (page === 'player') profile(arg);
+    else if (page === 'clubs') clubsPage();
+    else if (page === 'club') clubPage(arg);
+    else if (page === 'nations') nationsPage();
+    else if (page === 'nation') nationPage(arg);
+    else if (page === 'login') loginPage();
+    else if (page === 'edit') (arg === 'club' ? editClub(arg2) : editPlayer(arg2));
+    else if (page === 'ranking') rankingPage(arg, arg2, arg3);
+    else if (page === 'leagues') leaguesPage();
+    else if (page === 'league') leaguePage(arg);
+    else home();
+    window.scrollTo(0, 0);
+  }
+  window.addEventListener('hashchange', route);
+  document.addEventListener('click', e => { if (!e.target.closest('.search')) { const l = document.getElementById('results'); if (l) l.classList.remove('open'); } });
+  route();
+</script>
+</body>
+</html>
